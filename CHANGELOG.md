@@ -88,3 +88,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Alias matching**: Handles variations in how commentators refer to athletes
 - **CLI script**: Easy video processing without needing to run the full API
 - **ProcessingResult dataclass**: Clean return type with all relevant info for callers
+
+---
+
+## Step 6 - FastAPI Application (2026-02-04)
+
+### What was done:
+- Created FastAPI app with CORS middleware for frontend access
+- Implemented athlete search endpoint with partial name matching
+- Added video listing and detail endpoints with appearance counts
+- Built video processing endpoint for triggering pipeline via API
+- Created 15 API tests covering all endpoints and edge cases
+
+### Why these choices:
+- **CORS enabled**: Allows frontend to call API from any origin (development mode)
+- **Partial name search**: ILIKE pattern for user-friendly searching
+- **Auto-generated docs**: /docs endpoint provides Swagger UI for API exploration
+- **Dependency injection**: Database sessions managed via FastAPI dependencies
