@@ -105,3 +105,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Partial name search**: ILIKE pattern for user-friendly searching
 - **Auto-generated docs**: /docs endpoint provides Swagger UI for API exploration
 - **Dependency injection**: Database sessions managed via FastAPI dependencies
+
+---
+
+## Step 7 - Frontend MVP (2026-02-04)
+
+### What was done:
+- Created responsive search UI with Tailwind CSS (via CDN)
+- Implemented athlete search with result cards showing all appearances
+- Added timestamped YouTube links that open directly to athlete appearances
+- Display confidence scores with color-coded badges
+- Added loading states, empty states, and error handling
+
+### Why these choices:
+- **Tailwind CDN**: Zero build step, works by opening the HTML file directly
+- **Responsive design**: Mobile-friendly with proper viewport settings
+- **XSS protection**: HTML escaping for all user-generated content
+- **Visual confidence indicators**: Green/yellow/gray badges for quick quality assessment
