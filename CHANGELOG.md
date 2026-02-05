@@ -19,3 +19,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **SQLite**: Simple for MVP, file-based, upgradeable to PostgreSQL via SQLAlchemy
 - **youtube-transcript-api**: No API key required, works with auto-captions
 - **FastAPI**: Modern async Python web framework with automatic OpenAPI docs
+
+---
+
+## Step 2 - YouTube Transcript Fetcher (2026-02-04)
+
+### What was done:
+- Created TranscriptSegment dataclass for individual transcript segments with timing
+- Created FetchedTranscript dataclass with full_text, text_with_timestamps, and duration properties
+- Implemented TranscriptFetcher class to extract video IDs from various YouTube URL formats
+- Added transcript fetching with preference for manual transcripts over auto-generated
+- Created comprehensive test suite with 17 tests covering all functionality
+
+### Why these choices:
+- **Dataclasses**: Clean, typed data containers for transcript data
+- **URL pattern matching**: Support youtube.com/watch, youtu.be, embed, and shorts URLs
+- **Manual transcript preference**: Manual transcripts are typically more accurate than auto-generated
+- **[MM:SS] timestamp format**: Human-readable format that LLMs can easily parse
