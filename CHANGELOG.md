@@ -36,3 +36,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **URL pattern matching**: Support youtube.com/watch, youtu.be, embed, and shorts URLs
 - **Manual transcript preference**: Manual transcripts are typically more accurate than auto-generated
 - **[MM:SS] timestamp format**: Human-readable format that LLMs can easily parse
+
+---
+
+## Step 3 - LLM Athlete Extractor (2026-02-04)
+
+### What was done:
+- Created prompt templates for ninja warrior competition context
+- Implemented AthleteAppearance dataclass with confidence validation
+- Created ExtractionResult dataclass with athlete counting
+- Built LLMAthleteExtractor using Claude tool_use for structured output
+- Added comprehensive test suite with 14 tests including edge cases
+
+### Why these choices:
+- **Claude tool_use**: Guarantees structured JSON output without parsing errors
+- **Confidence scores**: Allow quality filtering at query time
+- **System prompt with context**: Helps LLM distinguish competitors from commentators
+- **Graceful handling of malformed entries**: Extraction continues even if some data is invalid
