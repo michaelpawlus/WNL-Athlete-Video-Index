@@ -53,3 +53,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Confidence scores**: Allow quality filtering at query time
 - **System prompt with context**: Helps LLM distinguish competitors from commentators
 - **Graceful handling of malformed entries**: Extraction continues even if some data is invalid
+
+---
+
+## Step 4 - Database Models (2026-02-04)
+
+### What was done:
+- Created SQLAlchemy ORM models: Athlete, Video, AthleteAppearance
+- Implemented database connection with SQLite configuration
+- Added Pydantic schemas for API request/response validation
+- Created init_db.py script for database initialization
+- Built test fixtures (conftest.py) and 13 database tests
+
+### Why these choices:
+- **SQLAlchemy ORM**: Type-safe database operations with relationship management
+- **Cascade deletes**: Automatically clean up appearances when athlete/video deleted
+- **JSON column for aliases**: Flexible storage for athlete name variations
+- **Pydantic schemas**: Separate API models from database models for clean layering
+- **raw_name_in_transcript**: Preserves original name for alias learning and debugging
