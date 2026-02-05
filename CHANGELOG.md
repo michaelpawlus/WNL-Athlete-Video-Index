@@ -71,3 +71,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **JSON column for aliases**: Flexible storage for athlete name variations
 - **Pydantic schemas**: Separate API models from database models for clean layering
 - **raw_name_in_transcript**: Preserves original name for alias learning and debugging
+
+---
+
+## Step 5 - Processing Pipeline (2026-02-04)
+
+### What was done:
+- Created ProcessingPipeline class connecting transcript fetch, LLM extraction, and database storage
+- Implemented idempotent processing (skip if already processed, force option available)
+- Added athlete matching by name or alias (case-insensitive)
+- Created process_video.py CLI script for command-line video processing
+- Built 12 pipeline tests covering success, error, and edge cases
+
+### Why these choices:
+- **Idempotent processing**: Safe for batch operations, prevents duplicate records
+- **Alias matching**: Handles variations in how commentators refer to athletes
+- **CLI script**: Easy video processing without needing to run the full API
+- **ProcessingResult dataclass**: Clean return type with all relevant info for callers
