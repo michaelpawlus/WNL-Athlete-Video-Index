@@ -124,7 +124,8 @@ class TranscriptFetcher:
         video_id = self.extract_video_id(url_or_id)
 
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            api = YouTubeTranscriptApi()
+            transcript_list = api.list(video_id)
 
             # Try to find a manually created transcript first
             transcript = None
@@ -152,11 +153,11 @@ class TranscriptFetcher:
 
             segments = [
                 TranscriptSegment(
-                    text=entry["text"],
-                    start=entry["start"],
-                    duration=entry["duration"],
+                    text=snippet.text,
+                    start=snippet.start,
+                    duration=snippet.duration,
                 )
-                for entry in transcript_data
+                for snippet in transcript_data.snippets
             ]
 
             return FetchedTranscript(
