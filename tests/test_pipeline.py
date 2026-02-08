@@ -6,6 +6,7 @@ from datetime import datetime
 from src.processing.pipeline import ProcessingPipeline, ProcessingResult, PipelineError
 from src.processing.transcript_fetcher import FetchedTranscript, TranscriptSegment
 from src.processing.llm_extractor import ExtractionResult, AthleteAppearance
+from src.processing.youtube_metadata import YouTubeMetadata
 from src.database.models import Athlete, Video, AthleteAppearance as DBAthleteAppearance
 
 
@@ -67,11 +68,24 @@ class TestProcessingPipeline:
         )
         return extractor
 
-    def test_process_video_success(self, test_session, mock_fetcher, mock_extractor):
+    @pytest.fixture
+    def mock_metadata_fetcher(self):
+        fetcher = Mock()
+        fetcher.fetch.return_value = YouTubeMetadata(
+            video_id="dQw4w9WgXcQ",
+            title="Auto Title - 01/01/25 - Tier 1",
+            channel_name="Test Channel",
+            upload_date=datetime(2025, 1, 1),
+            thumbnail_url="https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+        )
+        return fetcher
+
+    def test_process_video_success(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         result = pipeline.process_video(
@@ -92,12 +106,13 @@ class TestProcessingPipeline:
         assert video.title == "Test Competition"
         assert len(video.appearances) == 2
 
-    def test_process_video_idempotent(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_video_idempotent(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         """Second processing should return already_processed=True."""
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         # First processing
@@ -113,12 +128,13 @@ class TestProcessingPipeline:
         videos = test_session.query(Video).all()
         assert len(videos) == 1
 
-    def test_process_video_force_reprocess(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_video_force_reprocess(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         """Force reprocess should update the video."""
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         # First processing
@@ -138,19 +154,20 @@ class TestProcessingPipeline:
         video = test_session.get(Video, result1.video_id)
         assert video.title == "Updated Title"
 
-    def test_process_video_invalid_url(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_video_invalid_url(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         mock_fetcher.extract_video_id.side_effect = ValueError("Invalid URL")
 
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         with pytest.raises(PipelineError, match="Invalid video URL"):
             pipeline.process_video("not-a-valid-url")
 
-    def test_process_video_transcript_error(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_video_transcript_error(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         from src.processing.transcript_fetcher import TranscriptFetchError
 
         mock_fetcher.fetch.side_effect = TranscriptFetchError("No transcript")
@@ -159,12 +176,13 @@ class TestProcessingPipeline:
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         with pytest.raises(PipelineError, match="Failed to fetch transcript"):
             pipeline.process_video("dQw4w9WgXcQ")
 
-    def test_process_video_llm_error(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_video_llm_error(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         from src.processing.llm_extractor import LLMExtractorError
 
         mock_extractor.extract_appearances.side_effect = LLMExtractorError("API error")
@@ -173,16 +191,18 @@ class TestProcessingPipeline:
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         with pytest.raises(PipelineError, match="Failed to extract athletes"):
             pipeline.process_video("dQw4w9WgXcQ")
 
-    def test_find_or_create_athlete_creates_new(self, test_session, mock_fetcher, mock_extractor):
+    def test_find_or_create_athlete_creates_new(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         athlete = pipeline._find_or_create_athlete("New Athlete Name")
@@ -194,7 +214,7 @@ class TestProcessingPipeline:
         db_athlete = test_session.query(Athlete).filter_by(display_name="New Athlete Name").first()
         assert db_athlete is not None
 
-    def test_find_or_create_athlete_finds_existing(self, test_session, mock_fetcher, mock_extractor):
+    def test_find_or_create_athlete_finds_existing(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         # Create existing athlete
         existing = Athlete(display_name="Existing Athlete")
         test_session.add(existing)
@@ -204,6 +224,7 @@ class TestProcessingPipeline:
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         # Should find existing (case insensitive)
@@ -211,7 +232,7 @@ class TestProcessingPipeline:
 
         assert found.id == existing.id
 
-    def test_find_or_create_athlete_finds_by_alias(self, test_session, mock_fetcher, mock_extractor):
+    def test_find_or_create_athlete_finds_by_alias(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         # Create athlete with aliases
         existing = Athlete(
             display_name="Robert Johnson",
@@ -224,6 +245,7 @@ class TestProcessingPipeline:
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         # Should find by alias
@@ -232,11 +254,12 @@ class TestProcessingPipeline:
         assert found.id == existing.id
         assert found.display_name == "Robert Johnson"
 
-    def test_process_creates_correct_appearances(self, test_session, mock_fetcher, mock_extractor):
+    def test_process_creates_correct_appearances(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
         pipeline = ProcessingPipeline(
             db=test_session,
             transcript_fetcher=mock_fetcher,
             llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
         )
 
         pipeline.process_video("dQw4w9WgXcQ", title="Test")
@@ -254,3 +277,36 @@ class TestProcessingPipeline:
         sarah_app = next(a for a in appearances if a.raw_name_in_transcript == "Sarah Johnson")
         assert sarah_app.timestamp_seconds == 120
         assert sarah_app.confidence_score == 0.90
+
+    def test_auto_fetched_title_when_none_provided(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
+        """When title=None, pipeline uses auto-fetched title from YouTube."""
+        pipeline = ProcessingPipeline(
+            db=test_session,
+            transcript_fetcher=mock_fetcher,
+            llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
+        )
+
+        result = pipeline.process_video("dQw4w9WgXcQ")
+
+        video = test_session.query(Video).filter_by(youtube_id="dQw4w9WgXcQ").first()
+        assert video.title == "Auto Title - 01/01/25 - Tier 1"
+        assert video.channel_name == "Test Channel"
+        assert video.event_name == "Auto Title"
+        assert video.event_date == datetime(2025, 1, 1)
+
+    def test_explicit_title_overrides_fetched(self, test_session, mock_fetcher, mock_extractor, mock_metadata_fetcher):
+        """When title is explicitly provided, it overrides the fetched title."""
+        pipeline = ProcessingPipeline(
+            db=test_session,
+            transcript_fetcher=mock_fetcher,
+            llm_extractor=mock_extractor,
+            metadata_fetcher=mock_metadata_fetcher,
+        )
+
+        result = pipeline.process_video("dQw4w9WgXcQ", title="My Custom Title")
+
+        video = test_session.query(Video).filter_by(youtube_id="dQw4w9WgXcQ").first()
+        assert video.title == "My Custom Title"
+        # channel_name should still come from metadata
+        assert video.channel_name == "Test Channel"

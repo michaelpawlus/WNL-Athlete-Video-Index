@@ -65,6 +65,7 @@ class VideoBase(BaseModel):
     title: Optional[str] = None
     event_name: Optional[str] = None
     event_date: Optional[datetime] = None
+    channel_name: Optional[str] = None
 
 
 class VideoCreate(VideoBase):
@@ -105,6 +106,8 @@ class VideoListItem(BaseModel):
     youtube_id: str
     title: Optional[str]
     event_name: Optional[str]
+    event_date: Optional[datetime] = None
+    channel_name: Optional[str] = None
     processed_at: datetime
     athlete_count: int
 

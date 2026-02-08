@@ -52,6 +52,7 @@ class Video(Base):
     title = Column(String(500), nullable=True)
     event_name = Column(String(255), nullable=True)
     event_date = Column(DateTime, nullable=True)
+    channel_name = Column(String(255), nullable=True)
     transcript_raw = Column(Text, nullable=True)
     processed_at = Column(DateTime, default=utc_now)
 

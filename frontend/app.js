@@ -138,7 +138,8 @@ function renderVideoIndex() {
         videos = videos.filter(v => {
             const title = (v.title || '').toLowerCase();
             const event = (v.event_name || '').toLowerCase();
-            return title.includes(filter) || event.includes(filter);
+            const channel = (v.channel_name || '').toLowerCase();
+            return title.includes(filter) || event.includes(filter) || channel.includes(filter);
         });
     }
 
@@ -150,7 +151,7 @@ function renderVideoIndex() {
                 cmp = (a.title || '').localeCompare(b.title || '');
                 break;
             case 'date':
-                cmp = (a.processed_at || '').localeCompare(b.processed_at || '');
+                cmp = (a.event_date || a.processed_at || '').localeCompare(b.event_date || b.processed_at || '');
                 break;
             case 'athletes':
                 cmp = (a.athlete_count || 0) - (b.athlete_count || 0);
@@ -177,17 +178,27 @@ function createVideoIndexItem(video) {
     li.className = 'px-2 py-3 hover:bg-primary-light/40 transition-colors rounded-lg';
 
     const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(video.youtube_id)}`;
+    const thumbUrl = `https://i.ytimg.com/vi/${encodeURIComponent(video.youtube_id)}/mqdefault.jpg`;
+    const displayDate = video.event_date || video.processed_at;
+    const channelHtml = video.channel_name
+        ? escapeHtml(video.channel_name) + ' &middot; '
+        : '';
 
     li.innerHTML = `
         <div class="flex items-center gap-3">
+            <a href="${escapeHtml(watchUrl)}" target="_blank" rel="noopener noreferrer" class="shrink-0">
+                <img src="${escapeHtml(thumbUrl)}" alt="" width="96" height="54"
+                     class="rounded object-cover" style="width:96px;height:54px;" loading="lazy">
+            </a>
             <div class="flex-1 min-w-0">
                 <p class="font-heading font-semibold text-heading text-sm truncate">
                     ${escapeHtml(video.title || 'Untitled Video')}
                 </p>
                 <p class="text-xs text-body mt-0.5">
+                    ${channelHtml}
                     ${video.event_name ? escapeHtml(video.event_name) + ' &middot; ' : ''}
                     <span class="text-accent font-semibold">${video.athlete_count || 0}</span> athlete${(video.athlete_count || 0) !== 1 ? 's' : ''}
-                    ${video.processed_at ? ' &middot; ' + escapeHtml(formatDate(video.processed_at)) : ''}
+                    ${displayDate ? ' &middot; ' + escapeHtml(formatDate(displayDate)) : ''}
                 </p>
             </div>
             <a href="${escapeHtml(watchUrl)}"

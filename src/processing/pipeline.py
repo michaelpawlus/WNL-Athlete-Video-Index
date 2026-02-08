@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from src.database.models import Athlete, Video, AthleteAppearance
 from .transcript_fetcher import TranscriptFetcher, TranscriptFetchError
 from .llm_extractor import LLMAthleteExtractor, LLMExtractorError
+from .youtube_metadata import YouTubeMetadataFetcher, parse_event_name_from_title
 
 
 @dataclass
@@ -37,6 +38,7 @@ class ProcessingPipeline:
         db: Session,
         transcript_fetcher: Optional[TranscriptFetcher] = None,
         llm_extractor: Optional[LLMAthleteExtractor] = None,
+        metadata_fetcher: Optional[YouTubeMetadataFetcher] = None,
     ):
         """Initialize the pipeline.
 
@@ -44,10 +46,12 @@ class ProcessingPipeline:
             db: SQLAlchemy database session
             transcript_fetcher: Optional custom transcript fetcher
             llm_extractor: Optional custom LLM extractor
+            metadata_fetcher: Optional custom YouTube metadata fetcher
         """
         self.db = db
         self.transcript_fetcher = transcript_fetcher or TranscriptFetcher()
         self.llm_extractor = llm_extractor or LLMAthleteExtractor()
+        self.metadata_fetcher = metadata_fetcher or YouTubeMetadataFetcher()
 
     def process_video(
         self,
@@ -84,6 +88,15 @@ class ProcessingPipeline:
             video_id = self.transcript_fetcher.extract_video_id(url_or_id)
         except ValueError as e:
             raise PipelineError(f"Invalid video URL/ID: {e}")
+
+        # Step 1.5: Fetch YouTube metadata (best-effort, never raises)
+        yt_meta = self.metadata_fetcher.fetch(video_id)
+        if not title and yt_meta.title:
+            title = yt_meta.title
+        if not event_name and yt_meta.title:
+            event_name = parse_event_name_from_title(yt_meta.title)
+        if not event_date and yt_meta.upload_date:
+            event_date = yt_meta.upload_date
 
         # Step 2: Check if already processed
         existing_video = self.db.query(Video).filter_by(youtube_id=video_id).first()
@@ -125,6 +138,7 @@ class ProcessingPipeline:
             video.title = title or video.title
             video.event_name = event_name or video.event_name
             video.event_date = event_date or video.event_date
+            video.channel_name = yt_meta.channel_name or video.channel_name
             video.transcript_raw = transcript.text_with_timestamps
         else:
             video = Video(
@@ -132,6 +146,7 @@ class ProcessingPipeline:
                 title=title,
                 event_name=event_name,
                 event_date=event_date,
+                channel_name=yt_meta.channel_name,
                 transcript_raw=transcript.text_with_timestamps,
             )
             self.db.add(video)

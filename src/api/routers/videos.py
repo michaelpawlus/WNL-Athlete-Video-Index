@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import case
 
 from src.api.dependencies import get_db
 from src.database.models import Video, AthleteAppearance, Athlete
@@ -21,12 +22,14 @@ def list_videos(
             Video.youtube_id,
             Video.title,
             Video.event_name,
+            Video.event_date,
+            Video.channel_name,
             Video.processed_at,
             func.count(func.distinct(AthleteAppearance.athlete_id)).label("athlete_count"),
         )
         .outerjoin(AthleteAppearance)
         .group_by(Video.id)
-        .order_by(Video.processed_at.desc())
+        .order_by(func.coalesce(Video.event_date, Video.processed_at).desc())
         .all()
     )
 
@@ -36,6 +39,8 @@ def list_videos(
             youtube_id=r.youtube_id,
             title=r.title,
             event_name=r.event_name,
+            event_date=r.event_date,
+            channel_name=r.channel_name,
             processed_at=r.processed_at,
             athlete_count=r.athlete_count,
         )
