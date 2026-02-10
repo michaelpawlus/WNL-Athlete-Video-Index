@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from src.api.dependencies import get_db
 from src.database.models import Athlete, AthleteAppearance, Video
 from src.database.schemas import AthleteSearchResult, AthleteResponse, AppearanceInAthlete
+from src.search.fuzzy import build_search_candidates, fuzzy_search
+from src.search.known_athletes import load_known_athletes
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
 
@@ -15,37 +17,54 @@ router = APIRouter(prefix="/athletes", tags=["athletes"])
 @router.get("/search", response_model=list[AthleteSearchResult])
 def search_athletes(
     q: str = Query(..., min_length=1, description="Search query for athlete name"),
-    limit: int = Query(20, ge=1, le=100, description="Maximum results to return"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum results to return"),
+    threshold: int = Query(45, ge=0, le=100, description="Minimum fuzzy score"),
     db: Session = Depends(get_db),
 ):
-    """Search for athletes by name (partial match).
+    """Search for athletes by name using fuzzy matching.
 
-    Returns athletes with matching names and their appearance counts.
+    Returns athletes with matching names, similarity scores, and appearance counts.
     """
-    search_pattern = f"%{q}%"
-
-    # Query athletes with appearance count
-    results = (
+    # Load all athletes with appearance counts
+    rows = (
         db.query(
             Athlete.id,
             Athlete.display_name,
+            Athlete.aliases,
             func.count(AthleteAppearance.id).label("appearance_count"),
         )
         .outerjoin(AthleteAppearance)
-        .filter(Athlete.display_name.ilike(search_pattern))
         .group_by(Athlete.id)
-        .order_by(func.count(AthleteAppearance.id).desc())
-        .limit(limit)
         .all()
     )
 
+    db_athletes = [
+        {
+            "id": r.id,
+            "display_name": r.display_name,
+            "aliases": r.aliases or [],
+            "appearance_count": r.appearance_count,
+        }
+        for r in rows
+    ]
+
+    # Build candidates from DB athletes + known athletes registry
+    known = load_known_athletes()
+    candidates = build_search_candidates(db_athletes, known_athletes=known)
+
+    # Run fuzzy search
+    matches = fuzzy_search(q, candidates, limit=limit, threshold=threshold)
+
     return [
         AthleteSearchResult(
-            id=r.id,
-            display_name=r.display_name,
-            appearance_count=r.appearance_count,
+            id=m.athlete_id,
+            display_name=m.display_name,
+            appearance_count=m.appearance_count,
+            similarity_score=m.similarity_score,
+            matched_on=m.matched_on,
+            source=m.source,
         )
-        for r in results
+        for m in matches
     ]
 
 

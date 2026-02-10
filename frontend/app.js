@@ -56,6 +56,8 @@ let cachedVideos = [];
 let currentSort = 'title';
 let sortAsc = true;
 let filterDebounceTimer = null;
+let searchDebounceTimer = null;
+let suggestionIndex = -1;
 
 // ── UI State Management ───────────────────────────────
 
@@ -279,6 +281,150 @@ function getConfidenceBadgeClass(confidence) {
     return 'bg-gray-100 text-gray-600 dark:bg-dk-border dark:text-dk-body';
 }
 
+// ── Score Badge ───────────────────────────────────────
+
+function getScoreBadgeClass(score) {
+    if (score >= 80) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    if (score >= 60) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+    return 'bg-gray-100 text-gray-600 dark:bg-dk-border dark:text-dk-body';
+}
+
+// ── Suggestion Dropdown ───────────────────────────────
+
+function getSuggestionDropdown() {
+    let dropdown = document.getElementById('suggestionDropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.id = 'suggestionDropdown';
+        dropdown.className =
+            'absolute left-0 right-0 top-full mt-1 bg-white dark:bg-dk-surface border border-gray-200 dark:border-dk-border rounded-xl shadow-lg dark:shadow-none z-50 overflow-hidden hidden';
+        // Insert into the search wrapper
+        const wrapper = searchInput.closest('.search-wrapper');
+        wrapper.appendChild(dropdown);
+    }
+    return dropdown;
+}
+
+function renderSuggestions(results) {
+    const dropdown = getSuggestionDropdown();
+    suggestionIndex = -1;
+
+    if (!results || results.length === 0) {
+        dropdown.classList.add('hidden');
+        return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'suggestion-list max-h-72 overflow-y-auto py-1';
+
+    results.forEach((result, idx) => {
+        const li = document.createElement('li');
+        li.className =
+            'suggestion-item flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-primary-light/40 dark:hover:bg-dk-hover transition-colors';
+        li.dataset.index = idx;
+
+        const scoreClass = getScoreBadgeClass(result.similarity_score);
+        const score = Math.round(result.similarity_score);
+
+        const matchedNote = result.matched_on && result.matched_on !== result.display_name
+            ? `<span class="text-xs text-body dark:text-dk-body">matched: ${escapeHtml(result.matched_on)}</span>`
+            : '';
+
+        const videoCount = result.id !== null
+            ? `<span class="text-xs text-body dark:text-dk-body">${result.appearance_count} video${result.appearance_count !== 1 ? 's' : ''}</span>`
+            : `<span class="text-xs italic text-body dark:text-dk-body">roster only</span>`;
+
+        const sourceTag = result.source === 'known' && result.id === null
+            ? '<span class="ml-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary-light text-primary dark:bg-primary/20 dark:text-primary">WNL</span>'
+            : '';
+
+        li.innerHTML = `
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                    <span class="font-heading font-semibold text-heading dark:text-dk-heading text-sm truncate">${escapeHtml(result.display_name)}</span>
+                    ${sourceTag}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                    ${videoCount}
+                    ${matchedNote}
+                </div>
+            </div>
+            <span class="shrink-0 px-2.5 py-1 text-xs font-semibold rounded-full ${scoreClass}">
+                ${score}%
+            </span>
+        `;
+
+        li.addEventListener('click', () => selectSuggestion(result));
+        list.appendChild(li);
+    });
+
+    dropdown.innerHTML = '';
+    dropdown.appendChild(list);
+    dropdown.classList.remove('hidden');
+}
+
+function closeSuggestions() {
+    const dropdown = document.getElementById('suggestionDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    suggestionIndex = -1;
+}
+
+function highlightSuggestion(newIndex) {
+    const items = document.querySelectorAll('.suggestion-item');
+    if (items.length === 0) return;
+
+    // Clamp index
+    if (newIndex < 0) newIndex = items.length - 1;
+    if (newIndex >= items.length) newIndex = 0;
+
+    items.forEach(item => item.classList.remove('bg-primary-light/60', 'dark:bg-dk-hover'));
+    items[newIndex].classList.add('bg-primary-light/60', 'dark:bg-dk-hover');
+    items[newIndex].scrollIntoView({ block: 'nearest' });
+    suggestionIndex = newIndex;
+}
+
+function selectSuggestion(result) {
+    closeSuggestions();
+
+    if (result.id === null) {
+        // Known-only athlete with no DB record
+        resultsContainer.innerHTML = '';
+        const msg = document.createElement('div');
+        msg.className = 'bg-primary-light dark:bg-primary/10 border border-primary/30 text-primary-dark dark:text-primary px-5 py-4 rounded-xl text-center';
+        msg.innerHTML = `
+            <p class="font-heading font-semibold text-lg uppercase mb-1">${escapeHtml(result.display_name)}</p>
+            <p class="text-sm text-body dark:text-dk-body">This athlete is in the WNL roster but has no indexed video appearances yet.</p>
+        `;
+        resultsContainer.innerHTML = '';
+        resultsContainer.appendChild(msg);
+        showState('results');
+        return;
+    }
+
+    loadAthleteCard(result.id);
+}
+
+// ── Load Athlete Card ─────────────────────────────────
+
+async function loadAthleteCard(athleteId) {
+    setLoading(true);
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}`);
+        if (!res.ok) throw new Error(`Failed to load athlete: ${res.statusText}`);
+        const athlete = await res.json();
+
+        resultsContainer.innerHTML = '';
+        const card = createAthleteCard(athlete, 0);
+        resultsContainer.appendChild(card);
+        showState('results');
+    } catch (error) {
+        console.error('Load athlete error:', error);
+        showError(`Failed to load athlete: ${error.message}. Make sure the API server is running.`);
+    } finally {
+        setLoading(false);
+    }
+}
+
 // ── Athlete Card ──────────────────────────────────────
 
 function createAthleteCard(athlete, index) {
@@ -352,6 +498,7 @@ function createAthleteCard(athlete, index) {
 
 async function searchAthletes(query) {
     if (!query.trim()) {
+        closeSuggestions();
         showState('initial');
         return;
     }
@@ -370,26 +517,15 @@ async function searchAthletes(query) {
         const searchResults = await searchResponse.json();
 
         if (searchResults.length === 0) {
+            closeSuggestions();
             showState('empty');
             return;
         }
 
-        const athletePromises = searchResults.map(result =>
-            fetch(`${API_BASE_URL}/api/athletes/${result.id}`).then(res => res.json())
-        );
-
-        const athletes = await Promise.all(athletePromises);
-
-        resultsContainer.innerHTML = '';
-
-        athletes.forEach((athlete, i) => {
-            const card = createAthleteCard(athlete, i);
-            resultsContainer.appendChild(card);
-        });
-
-        showState('results');
+        renderSuggestions(searchResults);
     } catch (error) {
         console.error('Search error:', error);
+        closeSuggestions();
         showError(`Failed to search: ${error.message}. Make sure the API server is running.`);
     } finally {
         setLoading(false);
@@ -402,9 +538,44 @@ searchButton.addEventListener('click', () => {
     searchAthletes(searchInput.value);
 });
 
+searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounceTimer);
+    const query = searchInput.value.trim();
+    if (query.length >= 2) {
+        searchDebounceTimer = setTimeout(() => searchAthletes(query), 300);
+    } else {
+        closeSuggestions();
+    }
+});
+
 searchInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        searchAthletes(searchInput.value);
+    const dropdown = document.getElementById('suggestionDropdown');
+    const isOpen = dropdown && !dropdown.classList.contains('hidden');
+
+    if (event.key === 'ArrowDown' && isOpen) {
+        event.preventDefault();
+        highlightSuggestion(suggestionIndex + 1);
+    } else if (event.key === 'ArrowUp' && isOpen) {
+        event.preventDefault();
+        highlightSuggestion(suggestionIndex - 1);
+    } else if (event.key === 'Enter') {
+        if (isOpen && suggestionIndex >= 0) {
+            event.preventDefault();
+            const items = document.querySelectorAll('.suggestion-item');
+            items[suggestionIndex]?.click();
+        } else {
+            searchAthletes(searchInput.value);
+        }
+    } else if (event.key === 'Escape') {
+        closeSuggestions();
+    }
+});
+
+// Click outside to close suggestions
+document.addEventListener('click', (e) => {
+    const wrapper = searchInput.closest('.search-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        closeSuggestions();
     }
 });
 

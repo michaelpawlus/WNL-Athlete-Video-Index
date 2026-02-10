@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "source": "WNL Preteen Female / US-Midwest / Season XI",
+    "last_updated": "2026-02-10",
+    "ninjaworks_url": "https://ninjaworks.com"
+  },
+  "athletes": [
+    { "full_name": "Esme Newton-Pawlus", "first_name": "Esme", "db_athlete_id": null },
+    { "full_name": "Sloane Dabilis", "first_name": "Sloane", "db_athlete_id": null },
+    { "full_name": "Sloan Arcuri", "first_name": "Sloan", "db_athlete_id": null },
+    { "full_name": "Kate Feicht", "first_name": "Kate", "db_athlete_id": null },
+    { "full_name": "Kate Maley", "first_name": "Kate", "db_athlete_id": null },
+    { "full_name": "Frances Grover", "first_name": "Frances", "db_athlete_id": null },
+    { "full_name": "Genevieve Nelson", "first_name": "Genevieve", "db_athlete_id": null },
+    { "full_name": "Cecilia Simon", "first_name": "Cecilia", "db_athlete_id": null },
+    { "full_name": "Claire Adelman", "first_name": "Claire", "db_athlete_id": null },
+    { "full_name": "Brooklyn Schoon", "first_name": "Brooklyn", "db_athlete_id": null },
+    { "full_name": "McKenna VanMaele", "first_name": "McKenna", "db_athlete_id": null },
+    { "full_name": "Sophia Borrelli", "first_name": "Sophia", "db_athlete_id": null },
+    { "full_name": "Audrey Merritt", "first_name": "Audrey", "db_athlete_id": null },
+    { "full_name": "Addison Walder", "first_name": "Addison", "db_athlete_id": null }
+  ]
+}

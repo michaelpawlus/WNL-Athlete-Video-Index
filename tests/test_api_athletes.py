@@ -105,26 +105,31 @@ class TestHealthEndpoint:
 
 
 class TestAthleteSearchEndpoint:
-    """Tests for athlete search endpoint."""
+    """Tests for athlete search endpoint (fuzzy matching)."""
 
-    def test_search_athletes_by_name(self, client, sample_data):
-        response = client.get("/api/athletes/search?q=smith")
+    @patch("src.api.routers.athletes.load_known_athletes", return_value=[])
+    def test_search_athletes_by_name(self, _mock_known, client, sample_data):
+        response = client.get("/api/athletes/search?q=John+Smith")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["display_name"] == "John Smith"
-        assert data[0]["appearance_count"] == 1
+        assert any(r["display_name"] == "John Smith" for r in data)
+        top = data[0]
+        assert top["display_name"] == "John Smith"
+        assert top["appearance_count"] == 1
+        assert top["similarity_score"] > 0
+        assert "source" in top
 
-    def test_search_athletes_partial_match(self, client, sample_data):
-        response = client.get("/api/athletes/search?q=son")
+    @patch("src.api.routers.athletes.load_known_athletes", return_value=[])
+    def test_search_athletes_partial_match(self, _mock_known, client, sample_data):
+        response = client.get("/api/athletes/search?q=Johnson")
         assert response.status_code == 200
         data = response.json()
-        # Should match "Sarah Johnson"
-        assert len(data) == 1
-        assert data[0]["display_name"] == "Sarah Johnson"
+        # Should match "Sarah Johnson" with high score
+        assert any(r["display_name"] == "Sarah Johnson" for r in data)
 
-    def test_search_athletes_no_results(self, client, sample_data):
-        response = client.get("/api/athletes/search?q=xyz")
+    @patch("src.api.routers.athletes.load_known_athletes", return_value=[])
+    def test_search_athletes_no_results(self, _mock_known, client, sample_data):
+        response = client.get("/api/athletes/search?q=ZZZZZ")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 0
@@ -133,14 +138,16 @@ class TestAthleteSearchEndpoint:
         response = client.get("/api/athletes/search")
         assert response.status_code == 422  # Validation error
 
-    def test_search_athletes_case_insensitive(self, client, sample_data):
+    @patch("src.api.routers.athletes.load_known_athletes", return_value=[])
+    def test_search_athletes_case_insensitive(self, _mock_known, client, sample_data):
         response = client.get("/api/athletes/search?q=SMITH")
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
+        assert any(r["display_name"] == "John Smith" for r in data)
         assert data[0]["display_name"] == "John Smith"
 
-    def test_search_athletes_with_limit(self, client, sample_data):
+    @patch("src.api.routers.athletes.load_known_athletes", return_value=[])
+    def test_search_athletes_with_limit(self, _mock_known, client, sample_data):
         response = client.get("/api/athletes/search?q=s&limit=1")
         assert response.status_code == 200
         data = response.json()

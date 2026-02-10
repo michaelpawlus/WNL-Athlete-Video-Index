@@ -48,11 +48,12 @@ class AthleteResponse(AthleteBase):
 class AthleteSearchResult(BaseModel):
     """Schema for athlete search results."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
+    id: Optional[int] = None
     display_name: str
-    appearance_count: int
+    appearance_count: int = 0
+    similarity_score: float = 0.0
+    matched_on: Optional[str] = None
+    source: str = "db"
 
 
 # --- Video Schemas ---
