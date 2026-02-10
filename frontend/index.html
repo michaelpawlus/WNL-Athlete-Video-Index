@@ -14,6 +14,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -31,6 +32,12 @@
                         heading: '#1a202c',
                         body: '#4a5568',
                         yt: '#ff0000',
+                        'dk-page':    '#0f1117',
+                        'dk-surface': '#1a1f2e',
+                        'dk-border':  '#2a3040',
+                        'dk-heading': '#e2e8f0',
+                        'dk-body':    '#94a3b8',
+                        'dk-hover':   '#232a3b',
                     },
                     fontFamily: {
                         heading: ['"Barlow Condensed"', 'sans-serif'],
@@ -44,11 +51,19 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
 
+        /* Dark mode native controls */
+        html.dark { color-scheme: dark; }
+
         /* Custom scrollbar for video index */
         .video-index-list::-webkit-scrollbar { width: 6px; }
         .video-index-list::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
         .video-index-list::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
         .video-index-list::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Dark scrollbar */
+        .dark .video-index-list::-webkit-scrollbar-track { background: #1a1f2e; }
+        .dark .video-index-list::-webkit-scrollbar-thumb { background: #2a3040; }
+        .dark .video-index-list::-webkit-scrollbar-thumb:hover { background: #3a4050; }
 
         /* Panel expand/collapse */
         .video-index-panel {
@@ -91,6 +106,13 @@
             height: 20px;
             animation: spin 0.8s linear infinite;
         }
+        .dark .spinner {
+            border-color: #2a3040;
+            border-top-color: #4089c9;
+        }
+
+        /* Theme toggle icon transition */
+        #themeToggle svg { transition: transform 0.3s ease, opacity 0.3s ease; }
         @keyframes spin {
             0%   { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -103,25 +125,55 @@
         }
     </style>
 </head>
-<body class="bg-page min-h-screen flex flex-col">
+<script>
+(function () {
+    const STORAGE_KEY = 'wnl-theme';
+    function getPreferredTheme() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === 'dark' || stored === 'light') return stored;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    function applyTheme(theme) {
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+    }
+    applyTheme(getPreferredTheme());
+    window.__themeUtils = { STORAGE_KEY, getPreferredTheme, applyTheme };
+})();
+</script>
+<body class="bg-page dark:bg-dk-page min-h-screen flex flex-col transition-colors duration-300">
 
     <!-- ── Sticky Nav Bar ──────────────────────────────── -->
-    <nav class="sticky top-0 z-50 bg-white border-b-2 border-primary shadow-sm">
+    <nav class="sticky top-0 z-50 bg-white dark:bg-dk-surface border-b-2 border-primary shadow-sm dark:shadow-none transition-colors duration-300">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <span class="font-heading text-xl font-bold tracking-wide text-heading uppercase">
+            <span class="font-heading text-xl font-bold tracking-wide text-heading dark:text-dk-heading uppercase">
                 Athlete Video Index
             </span>
-            <span class="hidden sm:inline text-xs text-body">Ninja Warrior Competition Search</span>
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:inline text-xs text-body dark:text-dk-body">Ninja Warrior Competition Search</span>
+                <button id="themeToggle" aria-label="Switch to dark mode"
+                    class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dk-hover focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors">
+                    <!-- Moon icon (visible in light mode) -->
+                    <svg id="moonIcon" class="w-5 h-5 text-body" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                    <!-- Sun icon (visible in dark mode) -->
+                    <svg id="sunIcon" class="w-5 h-5 text-dk-body hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </nav>
 
     <!-- ── Hero Section ────────────────────────────────── -->
-    <section class="bg-gradient-to-b from-white to-primary-light">
+    <section class="bg-gradient-to-b from-white to-primary-light dark:from-dk-page dark:to-dk-surface transition-colors duration-300">
         <div class="max-w-3xl mx-auto px-4 pt-12 pb-10 text-center">
-            <h1 class="font-heading text-4xl sm:text-5xl font-bold italic uppercase text-heading leading-tight mb-3">
+            <h1 class="font-heading text-4xl sm:text-5xl font-bold italic uppercase text-heading dark:text-dk-heading leading-tight mb-3">
                 Find Your Ninja
             </h1>
-            <p class="text-body text-base sm:text-lg mb-8">
+            <p class="text-body dark:text-dk-body text-base sm:text-lg mb-8">
                 Search athletes and instantly jump to their competition footage
             </p>
 
@@ -131,9 +183,9 @@
                     type="text"
                     id="searchInput"
                     placeholder="Enter athlete name..."
-                    class="flex-1 px-5 py-3 rounded-full border-2 border-gray-200 bg-white text-heading
+                    class="flex-1 px-5 py-3 rounded-full border-2 border-gray-200 dark:border-dk-border bg-white dark:bg-dk-surface text-heading dark:text-dk-heading
                            focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30
-                           font-body text-base placeholder:text-gray-400"
+                           font-body text-base placeholder:text-gray-400 dark:placeholder:text-dk-body transition-colors duration-300"
                     autocomplete="off"
                 >
                 <button
@@ -150,15 +202,15 @@
     </section>
 
     <!-- ── Stats Bar ───────────────────────────────────── -->
-    <div class="border-t-2 border-b-2 border-primary/20 bg-white">
+    <div class="border-t-2 border-b-2 border-primary/20 dark:border-primary/10 bg-white dark:bg-dk-surface transition-colors duration-300">
         <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap justify-center gap-6 sm:gap-12">
             <div class="text-center">
                 <span id="statVideos" class="stat-counter block font-heading text-2xl font-bold text-primary">—</span>
-                <span class="text-xs text-body uppercase tracking-wide">Videos Indexed</span>
+                <span class="text-xs text-body dark:text-dk-body uppercase tracking-wide">Videos Indexed</span>
             </div>
             <div class="text-center">
                 <span id="statAppearances" class="stat-counter block font-heading text-2xl font-bold text-accent">—</span>
-                <span class="text-xs text-body uppercase tracking-wide">Athlete Appearances</span>
+                <span class="text-xs text-body dark:text-dk-body uppercase tracking-wide">Athlete Appearances</span>
             </div>
         </div>
     </div>
@@ -173,11 +225,11 @@
 
         <!-- Empty State -->
         <div id="emptyState" class="text-center py-14 hidden">
-            <svg class="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-dk-body mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
-            <p class="text-body">No athletes found. Try a different search term.</p>
+            <p class="text-body dark:text-dk-body">No athletes found. Try a different search term.</p>
         </div>
 
         <!-- Initial State -->
@@ -186,26 +238,26 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
             </svg>
-            <p class="text-body">Enter an athlete name to search for their competition appearances.</p>
+            <p class="text-body dark:text-dk-body">Enter an athlete name to search for their competition appearances.</p>
         </div>
 
         <!-- Error State -->
-        <div id="errorState" class="bg-accent/10 border border-accent/40 text-accent-dark px-5 py-4 rounded-xl hidden">
+        <div id="errorState" class="bg-accent/10 dark:bg-accent/5 border border-accent/40 text-accent-dark dark:text-accent px-5 py-4 rounded-xl hidden">
             <p id="errorMessage" class="font-medium"></p>
         </div>
 
         <!-- ── Video Index Panel ───────────────────────── -->
-        <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <section class="bg-white dark:bg-dk-surface rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-dk-border overflow-hidden transition-colors duration-300">
             <!-- Toggle Bar -->
             <button
                 id="videoIndexToggle"
-                class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                class="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-dk-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
                 aria-expanded="false"
             >
-                <span class="font-heading text-lg font-bold uppercase text-heading tracking-wide">
+                <span class="font-heading text-lg font-bold uppercase text-heading dark:text-dk-heading tracking-wide">
                     Video Index
                 </span>
-                <svg id="videoIndexChevron" class="chevron-icon w-5 h-5 text-body" fill="none"
+                <svg id="videoIndexChevron" class="chevron-icon w-5 h-5 text-body dark:text-dk-body" fill="none"
                      stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -213,7 +265,7 @@
 
             <!-- Expandable Panel -->
             <div id="videoIndexPanel" class="video-index-panel">
-                <div class="border-t-2 border-primary/20 px-5 py-4 space-y-4">
+                <div class="border-t-2 border-primary/20 dark:border-primary/10 px-5 py-4 space-y-4">
 
                     <!-- Filter + Sort Row -->
                     <div class="flex flex-wrap gap-3 items-center">
@@ -221,26 +273,26 @@
                             type="text"
                             id="videoFilterInput"
                             placeholder="Filter videos..."
-                            class="flex-1 min-w-[180px] px-4 py-2 rounded-full border border-gray-200 text-sm
+                            class="flex-1 min-w-[180px] px-4 py-2 rounded-full border border-gray-200 dark:border-dk-border dark:bg-dk-page dark:text-dk-heading text-sm
                                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20
-                                   placeholder:text-gray-400"
+                                   placeholder:text-gray-400 dark:placeholder:text-dk-body transition-colors duration-300"
                         >
                         <div class="flex gap-2">
-                            <button data-sort="title"   class="sort-btn active px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors">
+                            <button data-sort="title"   class="sort-btn active px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary dark:text-primary-light hover:bg-primary hover:text-white transition-colors">
                                 Title
                             </button>
-                            <button data-sort="date"    class="sort-btn px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors">
+                            <button data-sort="date"    class="sort-btn px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary dark:text-primary-light hover:bg-primary hover:text-white transition-colors">
                                 Date
                             </button>
-                            <button data-sort="athletes" class="sort-btn px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors">
+                            <button data-sort="athletes" class="sort-btn px-3 py-1.5 text-xs font-semibold rounded-full border border-primary/30 text-primary dark:text-primary-light hover:bg-primary hover:text-white transition-colors">
                                 Athletes
                             </button>
                         </div>
                     </div>
 
                     <!-- Scrollable Video List -->
-                    <ul id="videoIndexList" class="video-index-list max-h-96 overflow-y-auto divide-y divide-gray-100">
-                        <li class="text-center py-8 text-body text-sm">Loading videos...</li>
+                    <ul id="videoIndexList" class="video-index-list max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-dk-border">
+                        <li class="text-center py-8 text-body dark:text-dk-body text-sm">Loading videos...</li>
                     </ul>
                 </div>
             </div>
@@ -249,9 +301,9 @@
     </main>
 
     <!-- ── Footer ──────────────────────────────────────── -->
-    <footer class="bg-heading border-t-4 border-primary mt-auto">
+    <footer class="bg-heading dark:bg-dk-surface border-t-4 border-primary mt-auto transition-colors duration-300">
         <div class="max-w-5xl mx-auto px-4 py-6 text-center">
-            <p class="font-heading text-sm text-gray-400 uppercase tracking-wider">
+            <p class="font-heading text-sm text-gray-400 dark:text-dk-body uppercase tracking-wider">
                 Athlete Video Index &middot; Powered by AI Transcription
             </p>
         </div>

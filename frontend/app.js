@@ -24,6 +24,33 @@ const videoIndexList = document.getElementById('videoIndexList');
 const videoFilterInput = document.getElementById('videoFilterInput');
 const sortButtons = document.querySelectorAll('.sort-btn');
 
+// Theme Toggle
+const themeToggle = document.getElementById('themeToggle');
+const sunIcon = document.getElementById('sunIcon');
+const moonIcon = document.getElementById('moonIcon');
+
+function updateToggleIcons(isDark) {
+    sunIcon.classList.toggle('hidden', !isDark);
+    moonIcon.classList.toggle('hidden', isDark);
+    themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+}
+
+themeToggle.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem(window.__themeUtils.STORAGE_KEY, isDark ? 'dark' : 'light');
+    updateToggleIcons(isDark);
+});
+
+// Sync icons on load
+updateToggleIcons(document.documentElement.classList.contains('dark'));
+
+// Listen for OS theme changes (only when no manual preference)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (localStorage.getItem(window.__themeUtils.STORAGE_KEY)) return;
+    window.__themeUtils.applyTheme(e.matches ? 'dark' : 'light');
+    updateToggleIcons(e.matches);
+});
+
 // ── State ─────────────────────────────────────────────
 let cachedVideos = [];
 let currentSort = 'title';
@@ -123,7 +150,7 @@ async function loadVideos() {
     } catch (err) {
         console.error('Failed to load videos:', err);
         videoIndexList.innerHTML =
-            '<li class="text-center py-8 text-body text-sm">Unable to load video index.</li>';
+            '<li class="text-center py-8 text-body dark:text-dk-body text-sm">Unable to load video index.</li>';
         statVideos.textContent = '—';
         statAppearances.textContent = '—';
     }
@@ -163,7 +190,7 @@ function renderVideoIndex() {
     // Render
     if (videos.length === 0) {
         videoIndexList.innerHTML =
-            '<li class="text-center py-8 text-body text-sm">No videos match your filter.</li>';
+            '<li class="text-center py-8 text-body dark:text-dk-body text-sm">No videos match your filter.</li>';
         return;
     }
 
@@ -175,7 +202,7 @@ function renderVideoIndex() {
 
 function createVideoIndexItem(video) {
     const li = document.createElement('li');
-    li.className = 'px-2 py-3 hover:bg-primary-light/40 transition-colors rounded-lg';
+    li.className = 'px-2 py-3 hover:bg-primary-light/40 dark:hover:bg-dk-hover transition-colors rounded-lg';
 
     const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(video.youtube_id)}`;
     const thumbUrl = `https://i.ytimg.com/vi/${encodeURIComponent(video.youtube_id)}/mqdefault.jpg`;
@@ -191,10 +218,10 @@ function createVideoIndexItem(video) {
                      class="rounded object-cover" style="width:96px;height:54px;" loading="lazy">
             </a>
             <div class="flex-1 min-w-0">
-                <p class="font-heading font-semibold text-heading text-sm truncate">
+                <p class="font-heading font-semibold text-heading dark:text-dk-heading text-sm truncate">
                     ${escapeHtml(video.title || 'Untitled Video')}
                 </p>
-                <p class="text-xs text-body mt-0.5">
+                <p class="text-xs text-body dark:text-dk-body mt-0.5">
                     ${channelHtml}
                     ${video.event_name ? escapeHtml(video.event_name) + ' &middot; ' : ''}
                     <span class="text-accent font-semibold">${video.athlete_count || 0}</span> athlete${(video.athlete_count || 0) !== 1 ? 's' : ''}
@@ -247,9 +274,9 @@ videoFilterInput.addEventListener('input', () => {
 // ── Confidence Badge ──────────────────────────────────
 
 function getConfidenceBadgeClass(confidence) {
-    if (confidence >= 0.9) return 'bg-green-100 text-green-700';
-    if (confidence >= 0.7) return 'bg-accent/15 text-accent-dark';
-    return 'bg-gray-100 text-gray-600';
+    if (confidence >= 0.9) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    if (confidence >= 0.7) return 'bg-accent/15 text-accent-dark dark:bg-accent/10 dark:text-accent';
+    return 'bg-gray-100 text-gray-600 dark:bg-dk-border dark:text-dk-body';
 }
 
 // ── Athlete Card ──────────────────────────────────────
@@ -257,7 +284,7 @@ function getConfidenceBadgeClass(confidence) {
 function createAthleteCard(athlete, index) {
     const card = document.createElement('div');
     card.className =
-        'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden card-animate border-t-4 border-t-primary';
+        'bg-white dark:bg-dk-surface rounded-xl shadow-sm dark:shadow-none border border-gray-100 dark:border-dk-border overflow-hidden card-animate border-t-4 border-t-primary transition-colors duration-300';
     card.style.animationDelay = `${index * 80}ms`;
     card.style.opacity = '0';
 
@@ -266,7 +293,7 @@ function createAthleteCard(athlete, index) {
     header.className = 'px-6 py-4 flex items-center justify-between';
     header.innerHTML = `
         <div>
-            <h2 class="font-heading text-xl font-bold uppercase text-heading tracking-wide">
+            <h2 class="font-heading text-xl font-bold uppercase text-heading dark:text-dk-heading tracking-wide">
                 ${escapeHtml(athlete.display_name)}
             </h2>
         </div>
@@ -280,11 +307,11 @@ function createAthleteCard(athlete, index) {
     // Appearances
     if (athlete.appearances.length > 0) {
         const list = document.createElement('ul');
-        list.className = 'divide-y divide-gray-100';
+        list.className = 'divide-y divide-gray-100 dark:divide-dk-border';
 
         for (const appearance of athlete.appearances) {
             const item = document.createElement('li');
-            item.className = 'px-6 py-3.5 hover:bg-primary-light/30 transition-colors';
+            item.className = 'px-6 py-3.5 hover:bg-primary-light/30 dark:hover:bg-dk-hover transition-colors';
 
             const confidenceClass = getConfidenceBadgeClass(appearance.confidence_score);
             const confidencePercent = Math.round(appearance.confidence_score * 100);
@@ -292,8 +319,8 @@ function createAthleteCard(athlete, index) {
             item.innerHTML = `
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex-1 min-w-0">
-                        <p class="text-heading font-medium text-sm truncate">${escapeHtml(appearance.video_title || 'Untitled Video')}</p>
-                        <p class="text-xs text-body mt-0.5">
+                        <p class="text-heading dark:text-dk-heading font-medium text-sm truncate">${escapeHtml(appearance.video_title || 'Untitled Video')}</p>
+                        <p class="text-xs text-body dark:text-dk-body mt-0.5">
                             Appears at <span class="font-semibold text-primary">${formatTimestamp(appearance.timestamp_seconds)}</span>
                         </p>
                     </div>
